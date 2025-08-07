@@ -1,5 +1,5 @@
-accelerate
-aioboto3
+#accelerate
+#aioboto3
 aiohttp
 
 # database packages
