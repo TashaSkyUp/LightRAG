@@ -1,4 +1,6 @@
 #accelerate
+botocore
+aiobotocore
 #aioboto3
 aiohttp
 
