@@ -17,6 +17,6 @@ tenacity
 
 # LLM packages
 tiktoken
-torch
-transformers
+# torch
+# transformers
 xxhash
