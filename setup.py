@@ -56,6 +56,21 @@ metadata = retrieve_metadata()
 long_description = read_long_description()
 requirements = read_requirements()
 
+extras_require = {
+    "openai": ["openai", "tiktoken"],
+    "azure": ["openai", "tiktoken"],
+    "bedrock": ["aioboto3"],
+    "hf": ["transformers", "torch", "accelerate"],
+    "ollama": ["ollama"],
+    "lmdeploy": ["lmdeploy[all]"],
+    "neo4j": ["neo4j"],
+    "oracle": ["oracledb"],
+    "nanovdb": ["nano-vectordb", "hnswlib"],
+    "graph": ["networkx", "graspologic", "pyvis"],
+}
+extras_require["all"] = list(set(sum(extras_require.values(), [])))
+
+
 setuptools.setup(
     name="lightrag-hku",
     url=metadata["__url__"],
@@ -77,6 +92,7 @@ setuptools.setup(
     ],
     python_requires=">=3.9",
     install_requires=requirements,
+    extras_require=extras_require,
     include_package_data=True,  # Includes non-code files from MANIFEST.in
     project_urls={  # Additional project metadata
         "Documentation": metadata.get("__url__", ""),

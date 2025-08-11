@@ -5,12 +5,18 @@ from typing import Any, Union, Tuple, List, Dict
 import inspect
 from lightrag.utils import logger
 from ..base import BaseGraphStorage
-from neo4j import (
-    AsyncGraphDatabase,
-    exceptions as neo4jExceptions,
-    AsyncDriver,
-    AsyncManagedTransaction,
-)
+try:
+    from neo4j import (
+        AsyncGraphDatabase,
+        exceptions as neo4jExceptions,
+        AsyncDriver,
+        AsyncManagedTransaction,
+    )
+except ImportError:
+    AsyncGraphDatabase = None
+    neo4jExceptions = None
+    AsyncDriver = None
+    AsyncManagedTransaction = None
 
 
 from tenacity import (
@@ -28,13 +34,17 @@ class Neo4JStorage(BaseGraphStorage):
         print("no preloading of graph with neo4j in production")
 
     def __init__(self, namespace, global_config):
+        if AsyncGraphDatabase is None:
+            raise ImportError(
+                "neo4j is not installed. Please install it with `pip install lightrag[neo4j]`"
+            )
         super().__init__(namespace=namespace, global_config=global_config)
         self._driver = None
         self._driver_lock = asyncio.Lock()
         URI = os.environ["NEO4J_URI"]
         USERNAME = os.environ["NEO4J_USERNAME"]
         PASSWORD = os.environ["NEO4J_PASSWORD"]
-        self._driver: AsyncDriver = AsyncGraphDatabase.driver(
+        self._driver: "AsyncDriver" = AsyncGraphDatabase.driver(
             URI, auth=(USERNAME, PASSWORD)
         )
         return None
@@ -43,6 +53,30 @@ class Neo4JStorage(BaseGraphStorage):
         self._node_embed_algorithms = {
             "node2vec": self._node2vec_embed,
         }
+        if neo4jExceptions is not None:
+            self.upsert_node = retry(
+                stop=stop_after_attempt(3),
+                wait=wait_exponential(multiplier=1, min=4, max=10),
+                retry=retry_if_exception_type(
+                    (
+                        neo4jExceptions.ServiceUnavailable,
+                        neo4jExceptions.TransientError,
+                        neo4jExceptions.WriteServiceUnavailable,
+                        neo4jExceptions.ClientError,
+                    )
+                ),
+            )(self.upsert_node)
+            self.upsert_edge = retry(
+                stop=stop_after_attempt(3),
+                wait=wait_exponential(multiplier=1, min=4, max=10),
+                retry=retry_if_exception_type(
+                    (
+                        neo4jExceptions.ServiceUnavailable,
+                        neo4jExceptions.TransientError,
+                        neo4jExceptions.WriteServiceUnavailable,
+                    )
+                ),
+            )(self.upsert_edge)
 
     async def close(self):
         if self._driver:
@@ -203,18 +237,6 @@ class Neo4JStorage(BaseGraphStorage):
 
             return edges
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type(
-            (
-                neo4jExceptions.ServiceUnavailable,
-                neo4jExceptions.TransientError,
-                neo4jExceptions.WriteServiceUnavailable,
-                neo4jExceptions.ClientError,
-            )
-        ),
-    )
     async def upsert_node(self, node_id: str, node_data: Dict[str, Any]):
         """
         Upsert a node in the Neo4j database.
@@ -226,7 +248,7 @@ class Neo4JStorage(BaseGraphStorage):
         label = node_id.strip('"')
         properties = node_data
 
-        async def _do_upsert(tx: AsyncManagedTransaction):
+        async def _do_upsert(tx: "AsyncManagedTransaction"):
             query = f"""
             MERGE (n:`{label}`)
             SET n += $properties
@@ -243,17 +265,6 @@ class Neo4JStorage(BaseGraphStorage):
             logger.error(f"Error during upsert: {str(e)}")
             raise
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type(
-            (
-                neo4jExceptions.ServiceUnavailable,
-                neo4jExceptions.TransientError,
-                neo4jExceptions.WriteServiceUnavailable,
-            )
-        ),
-    )
     async def upsert_edge(
         self, source_node_id: str, target_node_id: str, edge_data: Dict[str, Any]
     ):
@@ -269,7 +280,7 @@ class Neo4JStorage(BaseGraphStorage):
         target_node_label = target_node_id.strip('"')
         edge_properties = edge_data
 
-        async def _do_upsert_edge(tx: AsyncManagedTransaction):
+        async def _do_upsert_edge(tx: "AsyncManagedTransaction"):
             query = f"""
             MATCH (source:`{source_node_label}`)
             WITH source

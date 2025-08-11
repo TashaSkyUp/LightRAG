@@ -14,11 +14,18 @@ from ..base import (
     BaseVectorStorage,
 )
 
-import oracledb
+try:
+    import oracledb
+except ImportError:
+    oracledb = None
 
 
 class OracleDB:
     def __init__(self, config, **kwargs):
+        if oracledb is None:
+            raise ImportError(
+                "oracledb is not installed. Please install it with `pip install lightrag[oracle]`"
+            )
         self.host = config.get("host", None)
         self.port = config.get("port", None)
         self.user = config.get("user", None)
@@ -416,7 +423,12 @@ class OracleGraphStorage(BaseGraphStorage):
 
     async def _node2vec_embed(self):
         """为节点生成向量"""
-        from graspologic import embed
+        try:
+            from graspologic import embed
+        except ImportError:
+            raise ImportError(
+                "graspologic is not installed. Please install it with `pip install lightrag[graph]`"
+            )
 
         embeddings, nodes = embed.node2vec_embed(
             self._graph,

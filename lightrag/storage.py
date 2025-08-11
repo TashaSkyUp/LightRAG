@@ -4,9 +4,16 @@ import os
 from tqdm.asyncio import tqdm as tqdm_async
 from dataclasses import dataclass
 from typing import Any, Union, cast
-import networkx as nx
 import numpy as np
-from nano_vectordb import NanoVectorDB
+try:
+    import networkx as nx
+except ImportError:
+    nx = None
+
+try:
+    from nano_vectordb import NanoVectorDB
+except ImportError:
+    NanoVectorDB = None
 
 from .utils import (
     logger,
@@ -68,6 +75,10 @@ class NanoVectorDBStorage(BaseVectorStorage):
     cosine_better_than_threshold: float = 0.2
 
     def __post_init__(self):
+        if NanoVectorDB is None:
+            raise ImportError(
+                "nano_vectordb is not installed. Please install it with `pip install lightrag[nanovdb]`"
+            )
         self._client_file_name = os.path.join(
             self.global_config["working_dir"], f"vdb_{self.namespace}.json"
         )
@@ -169,20 +180,20 @@ class NanoVectorDBStorage(BaseVectorStorage):
 @dataclass
 class NetworkXStorage(BaseGraphStorage):
     @staticmethod
-    def load_nx_graph(file_name) -> nx.Graph:
+    def load_nx_graph(file_name) -> "nx.Graph":
         if os.path.exists(file_name):
             return nx.read_graphml(file_name)
         return None
 
     @staticmethod
-    def write_nx_graph(graph: nx.Graph, file_name):
+    def write_nx_graph(graph: "nx.Graph", file_name):
         logger.info(
             f"Writing graph with {graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges"
         )
         nx.write_graphml(graph, file_name)
 
     @staticmethod
-    def stable_largest_connected_component(graph: nx.Graph) -> nx.Graph:
+    def stable_largest_connected_component(graph: "nx.Graph") -> "nx.Graph":
         """Refer to https://github.com/microsoft/graphrag/index/graph/utils/stable_lcc.py
         Return the largest connected component of the graph, with nodes and edges sorted in a stable way.
         """
@@ -197,7 +208,7 @@ class NetworkXStorage(BaseGraphStorage):
         return NetworkXStorage._stabilize_graph(graph)
 
     @staticmethod
-    def _stabilize_graph(graph: nx.Graph) -> nx.Graph:
+    def _stabilize_graph(graph: "nx.Graph") -> "nx.Graph":
         """Refer to https://github.com/microsoft/graphrag/index/graph/utils/stable_lcc.py
         Ensure an undirected graph with the same relationships will always be read the same way.
         """
@@ -230,6 +241,10 @@ class NetworkXStorage(BaseGraphStorage):
         return fixed_graph
 
     def __post_init__(self):
+        if nx is None:
+            raise ImportError(
+                "networkx is not installed. Please install it with `pip install lightrag[graph]`"
+            )
         self._graphml_xml_file = os.path.join(
             self.global_config["working_dir"], f"graph_{self.namespace}.graphml"
         )
@@ -298,7 +313,12 @@ class NetworkXStorage(BaseGraphStorage):
 
     # @TODO: NOT USED
     async def _node2vec_embed(self):
-        from graspologic import embed
+        try:
+            from graspologic import embed
+        except ImportError:
+            raise ImportError(
+                "graspologic is not installed. Please install it with `pip install lightrag[graph]`"
+            )
 
         embeddings, nodes = embed.node2vec_embed(
             self._graph,

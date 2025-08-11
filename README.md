@@ -59,6 +59,27 @@ pip install -e .
 pip install lightrag-hku
 ```
 
+### Optional Dependencies
+
+LightRAG has several optional dependencies that are required for specific features. You can install them as extras along with the core package.
+
+-   **`openai`**: For using OpenAI models (`pip install lightrag-hku[openai]`)
+-   **`azure`**: For using Azure OpenAI models (`pip install lightrag-hku[azure]`)
+-   **`bedrock`**: For using AWS Bedrock models (`pip install lightrag-hku[bedrock]`)
+-   **`hf`**: For using Hugging Face models (`pip install lightrag-hku[hf]`)
+-   **`ollama`**: For using Ollama models (`pip install lightrag-hku[ollama]`)
+-   **`lmdeploy`**: For using LMDeploy models (`pip install lightrag-hku[lmdeploy]`)
+-   **`neo4j`**: For using Neo4j as a graph store (`pip install lightrag-hku[neo4j]`)
+-   **`oracle`**: For using Oracle Database (`pip install lightrag-hku[oracle]`)
+-   **`nanovdb`**: For using NanoVectorDB for local vector storage (`pip install lightrag-hku[nanovdb]`)
+-   **`graph`**: For graph operations with NetworkX (`pip install lightrag-hku[graph]`)
+
+You can also install all optional dependencies with:
+
+```bash
+pip install lightrag-hku[all]
+```
+
 ## Quick Start
 * [Video demo](https://www.youtube.com/watch?v=g21royNJ4fw) of running LightRAG locally.
 * All the code can be found in the `examples`.

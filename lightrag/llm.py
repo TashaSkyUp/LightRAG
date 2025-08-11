@@ -2,18 +2,34 @@ import os
 import copy
 from functools import lru_cache
 import json
-import aioboto3
 import aiohttp
 import numpy as np
-import ollama
 
-from openai import (
-    AsyncOpenAI,
-    APIConnectionError,
-    RateLimitError,
-    Timeout,
-    AsyncAzureOpenAI,
-)
+try:
+    import aioboto3
+except ImportError:
+    aioboto3 = None
+
+try:
+    import ollama
+except ImportError:
+    ollama = None
+
+try:
+    from openai import (
+        AsyncOpenAI,
+        APIConnectionError,
+        RateLimitError,
+        Timeout,
+        AsyncAzureOpenAI,
+    )
+except ImportError:
+    AsyncOpenAI = None
+    APIConnectionError = None
+    RateLimitError = None
+    Timeout = None
+    AsyncAzureOpenAI = None
+
 
 import base64
 import struct
@@ -24,8 +40,17 @@ from tenacity import (
     wait_exponential,
     retry_if_exception_type,
 )
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
+try:
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+except ImportError:
+    AutoTokenizer = None
+    AutoModelForCausalLM = None
+
+try:
+    import torch
+except ImportError:
+    torch = None
+
 from pydantic import BaseModel, Field
 from typing import List, Dict, Callable, Any
 from .base import BaseKVStorage
@@ -48,6 +73,10 @@ async def openai_complete_if_cache(
     api_key=None,
     **kwargs,
 ) -> str:
+    if AsyncOpenAI is None:
+        raise ImportError(
+            "openai is not installed. Please install it with `pip install lightrag[openai]`"
+        )
     if api_key:
         os.environ["OPENAI_API_KEY"] = api_key
 
@@ -94,6 +123,10 @@ async def azure_openai_complete_if_cache(
     api_key=None,
     **kwargs,
 ):
+    if AsyncAzureOpenAI is None:
+        raise ImportError(
+            "openai is not installed. Please install it with `pip install lightrag[azure]`"
+        )
     if api_key:
         os.environ["AZURE_OPENAI_API_KEY"] = api_key
     if base_url:
@@ -148,6 +181,10 @@ async def bedrock_complete_if_cache(
     aws_session_token=None,
     **kwargs,
 ) -> str:
+    if aioboto3 is None:
+        raise ImportError(
+            "aioboto3 is not installed. Please install it with `pip install lightrag[bedrock]`"
+        )
     os.environ["AWS_ACCESS_KEY_ID"] = os.environ.get(
         "AWS_ACCESS_KEY_ID", aws_access_key_id
     )
@@ -235,6 +272,10 @@ def initialize_hf_model(model_name):
 async def hf_model_if_cache(
     model, prompt, system_prompt=None, history_messages=[], **kwargs
 ) -> str:
+    if AutoTokenizer is None or AutoModelForCausalLM is None or torch is None:
+        raise ImportError(
+            "transformers or torch is not installed. Please install it with `pip install lightrag[hf]`"
+        )
     model_name = model
     hf_model, hf_tokenizer = initialize_hf_model(model_name)
     hashing_kv: BaseKVStorage = kwargs.pop("hashing_kv", None)
@@ -300,6 +341,10 @@ async def hf_model_if_cache(
 async def ollama_model_if_cache(
     model, prompt, system_prompt=None, history_messages=[], **kwargs
 ) -> str:
+    if ollama is None:
+        raise ImportError(
+            "ollama is not installed. Please install it with `pip install lightrag[ollama]`"
+        )
     kwargs.pop("max_tokens", None)
     kwargs.pop("response_format", None)
     host = kwargs.pop("host", None)
@@ -395,7 +440,7 @@ async def lmdeploy_model_if_cache(
         import lmdeploy
         from lmdeploy import version_info, GenerationConfig
     except Exception:
-        raise ImportError("Please install lmdeploy before intialize lmdeploy backend.")
+        raise ImportError("Please install lmdeploy with `pip install lightrag[lmdeploy]` before intialize lmdeploy backend.")
 
     kwargs.pop("response_format", None)
     max_new_tokens = kwargs.pop("max_tokens", 512)
@@ -636,6 +681,10 @@ async def bedrock_embedding(
     aws_secret_access_key=None,
     aws_session_token=None,
 ) -> np.ndarray:
+    if aioboto3 is None:
+        raise ImportError(
+            "aioboto3 is not installed. Please install it with `pip install lightrag[bedrock]`"
+        )
     os.environ["AWS_ACCESS_KEY_ID"] = os.environ.get(
         "AWS_ACCESS_KEY_ID", aws_access_key_id
     )
@@ -696,6 +745,10 @@ async def bedrock_embedding(
 
 
 async def hf_embedding(texts: list[str], tokenizer, embed_model) -> np.ndarray:
+    if torch is None:
+        raise ImportError(
+            "torch is not installed. Please install it with `pip install lightrag[hf]`"
+        )
     device = next(embed_model.parameters()).device
     input_ids = tokenizer(
         texts, return_tensors="pt", padding=True, truncation=True
@@ -710,6 +763,10 @@ async def hf_embedding(texts: list[str], tokenizer, embed_model) -> np.ndarray:
 
 
 async def ollama_embedding(texts: list[str], embed_model, **kwargs) -> np.ndarray:
+    if ollama is None:
+        raise ImportError(
+            "ollama is not installed. Please install it with `pip install lightrag[ollama]`"
+        )
     embed_text = []
     ollama_client = ollama.Client(**kwargs)
     for text in texts:

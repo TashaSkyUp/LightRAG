@@ -13,7 +13,10 @@ from typing import Any, Union, List
 import xml.etree.ElementTree as ET
 
 import numpy as np
-import tiktoken
+try:
+    import tiktoken
+except ImportError:
+    tiktoken = None
 
 ENCODER = None
 
@@ -135,6 +138,10 @@ def write_json(json_obj, file_name):
 
 
 def encode_string_by_tiktoken(content: str, model_name: str = "gpt-4o"):
+    if tiktoken is None:
+        raise ImportError(
+            "tiktoken is not installed. Please install it with `pip install lightrag[openai]`"
+        )
     global ENCODER
     if ENCODER is None:
         ENCODER = tiktoken.encoding_for_model(model_name)
@@ -143,6 +150,10 @@ def encode_string_by_tiktoken(content: str, model_name: str = "gpt-4o"):
 
 
 def decode_tokens_by_tiktoken(tokens: list[int], model_name: str = "gpt-4o"):
+    if tiktoken is None:
+        raise ImportError(
+            "tiktoken is not installed. Please install it with `pip install lightrag[openai]`"
+        )
     global ENCODER
     if ENCODER is None:
         ENCODER = tiktoken.encoding_for_model(model_name)
@@ -184,6 +195,10 @@ def is_float_regex(value):
 
 def truncate_list_by_token_size(list_data: list, key: callable, max_token_size: int):
     """Truncate a list of data by token size"""
+    if tiktoken is None:
+        raise ImportError(
+            "tiktoken is not installed. Please install it with `pip install lightrag[openai]`"
+        )
     if max_token_size <= 0:
         return []
     tokens = 0
